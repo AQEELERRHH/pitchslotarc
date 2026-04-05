@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Place a Bid — PitchSlotArc</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,700;0,900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --green: #4ade80;
+    --ink: #0d0d0d;
+    --surface: #111;
+    --surface2: #161616;
+    --border: #222;
+    --muted: #555;
+    --mono: 'DM Mono', monospace;
+    --serif: 'Fraunces', serif;
+  }
+  body { font-family: var(--mono); background: var(--ink); color: #fff; min-height: 100vh; }
+
+  nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 32px; border-bottom: 1px solid var(--border);
+  }
+  .logo { font-family: var(--serif); font-size: 18px; font-weight: 900; }
+  .logo span { color: var(--green); font-style: italic; }
+  .logo a { color: inherit; text-decoration: none; }
+
+  #connect-btn {
+    font-family: var(--mono); font-size: 11px; padding: 8px 16px;
+    background: transparent; border: 1px solid var(--border);
+    color: #fff; cursor: pointer; border-radius: 4px; letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+  #connect-btn:hover { border-color: var(--green); color: var(--green); }
+  #connect-btn.connected { border-color: var(--green); color: var(--green); }
+
+  .container { max-width: 680px; margin: 0 auto; padding: 40px 32px; }
+
+  .page-title {
+    font-family: var(--serif); font-size: 36px; font-weight: 900;
+    letter-spacing: -0.03em; margin-bottom: 8px;
+  }
+  .page-title em { color: var(--green); font-style: italic; }
+  .page-sub { font-size: 12px; color: var(--muted); margin-bottom: 40px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 4px; padding: 24px; margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 16px;
+  }
+
+  .form-row { margin-bottom: 16px; }
+  .form-label {
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 6px; display: block;
+  }
+  input[type="text"], input[type="number"], textarea {
+    width: 100%; background: var(--ink); border: 1px solid var(--border);
+    color: #fff; font-family: var(--mono); font-size: 13px;
+    padding: 10px 14px; border-radius: 4px; outline: none;
+    transition: border-color 0.15s;
+  }
+  textarea { min-height: 100px; resize: vertical; }
+  input:focus, textarea:focus { border-color: var(--green); }
+
+  .top-bid-banner {
+    background: #0a1f14; border: 1px solid #1a4a2a; border-radius: 4px;
+    padding: 14px 18px; display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 16px;
+  }
+  .top-bid-label { font-size: 10px; color: #555; letter-spacing: 0.1em; text-transform: uppercase; }
+  .top-bid-val { font-family: var(--serif); font-size: 22px; font-weight: 900; color: var(--green); }
+
+  .toggle-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  }
+  .toggle-label { font-size: 11px; color: var(--muted); }
+  input[type="checkbox"] { accent-color: var(--green); width: 16px; height: 16px; }
+
+  .btn {
+    font-family: var(--mono); font-size: 12px; padding: 12px 24px;
+    border-radius: 4px; border: none; cursor: pointer;
+    letter-spacing: 0.03em; transition: all 0.15s; width: 100%;
+  }
+  .btn-green { background: var(--green); color: #000; font-weight: 500; }
+  .btn-green:hover { background: #22c55e; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .notice {
+    font-size: 11px; color: var(--muted); background: var(--surface2);
+    border-radius: 4px; padding: 12px 16px; margin-top: 12px;
+    line-height: 1.7; border: 1px solid var(--border);
+  }
+
+  .status-msg {
+    font-size: 11px; padding: 12px 16px; border-radius: 4px;
+    margin-top: 12px; display: none; line-height: 1.6;
+  }
+  .status-msg.show { display: block; }
+  .status-msg.ok { background: #0a1f14; color: var(--green); border: 1px solid #1a4a2a; }
+  .status-msg.err { background: #1f0a0a; color: #f87171; border: 1px solid #7f1d1d; }
+  .status-msg.loading { background: #1a1a0a; color: #fbbf24; border: 1px solid #78350f; }
+
+  .my-bids-title {
+    font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px; margin-top: 32px;
+  }
+
+  .my-bid-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 4px; padding: 16px; margin-bottom: 10px;
+  }
+  .my-bid-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .my-bid-creator { font-size: 12px; font-weight: 500; }
+  .my-bid-amount { font-family: var(--serif); font-size: 18px; font-weight: 900; color: var(--green); }
+  .my-bid-meta { font-size: 10px; color: var(--muted); }
+  .bid-tag {
+    font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 20px;
+  }
+  .tag-active { background: #0a1f14; color: var(--green); border: 1px solid #1a4a2a; }
+  .tag-expiring { background: #1f1a0a; color: #fbbf24; border: 1px solid #78350f; }
+
+  .expiry-bar { margin-top: 8px; }
+  .expiry-label { font-size: 9px; color: var(--muted); margin-bottom: 3px; }
+  .expiry-track { height: 2px; background: #222; border-radius: 1px; overflow: hidden; }
+  .expiry-fill { height: 100%; border-radius: 1px; }
+
+  #not-connected { text-align: center; padding: 80px 20px; }
+  #not-connected h2 { font-family: var(--serif); font-size: 28px; margin-bottom: 12px; }
+  #not-connected p { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+
+  .approval-note {
+    font-size: 10px; color: var(--muted); margin-top: 8px; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo"><a href="index.html">Pitch<span>Slot</span>Arc</a></div>
+  <button id="connect-btn" onclick="connectWallet()">Connect Wallet</button>
+</nav>
+
+<div class="container">
+
+  <div id="not-connected">
+    <h2>Place a <em style="color:var(--green);font-style:italic;">Bid</em></h2>
+    <p>Connect your MetaMask wallet to bid for a creator's attention on Arc.</p>
+    <button class="btn btn-green" style="width:auto;padding:12px 28px;" onclick="connectWallet()">Connect MetaMask →</button>
+  </div>
+
+  <div id="connected-view" style="display:none;">
+    <div class="page-title">Place a <em>Bid</em></div>
+    <div class="page-sub" id="wallet-address">Connected: —</div>
+
+    <div class="card">
+      <div class="card-title">Bid Details</div>
+
+      <div class="form-row">
+        <label class="form-label">Creator wallet address</label>
+        <input type="text" id="creator-addr" placeholder="0x... paste creator's address"
+          oninput="loadTopBid()">
+      </div>
+
+      <div id="top-bid-section" style="display:none;">
+        <div class="top-bid-banner">
+          <div>
+            <div class="top-bid-label">Current top bid</div>
+            <div class="top-bid-val" id="top-bid-val">$0.00 USDC</div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);text-align:right;">
+            Beat this to<br>rank #1
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Your bid amount (USDC)</label>
+        <input type="number" id="bid-amount" placeholder="Minimum set by creator" min="1" step="1"
+          oninput="updatePreview()">
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Your message</label>
+        <textarea id="bid-message" placeholder="Introduce yourself and explain why you're reaching out. Be specific — quality messages get accepted."></textarea>
+      </div>
+
+      <div class="toggle-row">
+        <input type="checkbox" id="private-toggle">
+        <label class="toggle-label" for="private-toggle">Keep my identity private — bid amount visible, my address hidden from creator</label>
+      </div>
+
+      <button class="btn btn-green" onclick="placeBid()" id="bid-btn">
+        Lock <span id="bid-preview">0.00</span> USDC in escrow →
+      </button>
+      <div class="approval-note">Step 1: Approve USDC · Step 2: Place bid (2 transactions)</div>
+
+      <div class="notice">
+        Your USDC is held in Arc smart contract escrow. It is only released to the creator when they reply. If they reject or ignore your bid for 14 days, you get a full refund. 2% platform fee applies on acceptance only.
+      </div>
+
+      <div class="status-msg" id="bid-status"></div>
+    </div>
+
+    <!-- MY BIDS -->
+    <div id="my-bids-section" style="display:none;">
+      <div class="my-bids-title">Your Active Bids</div>
+      <div id="my-bid-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CONTRACT_ADDRESS = "0xd97Df466F8de1BE0567aa5403c8d5dB06cee25B7";
+const USDC_ADDRESS     = "0x3600000000000000000000000000000000000000";
+const ARC_CHAIN_ID     = 5042002;
+const ARC_RPC          = "https://rpc.testnet.arc.network";
+const USDC_DECIMALS    = 6;
+
+const ABI = [
+  "function placeBid(address _creator, uint256 _amount, string calldata _message, bool _isPrivate) external",
+  "function getBidderBids(address _bidder) view returns (uint256[])",
+  "function getBid(uint256 _bidId) view returns (address,address,uint256,string,uint256,uint8,bool)",
+  "function getTopBid(address _creator) view returns (uint256)",
+  "function creators(address) view returns (uint256,bool,uint256)"
+];
+
+const USDC_ABI = [
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function balanceOf(address) view returns (uint256)"
+];
+
+let provider, signer, contract, usdcContract, userAddress;
+
+async function connectWallet() {
+  if (!window.ethereum) { alert("Please install MetaMask."); return; }
+  try {
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    userAddress = await signer.getAddress();
+    await switchToArc();
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+    usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
+
+    document.getElementById("connect-btn").textContent =
+      userAddress.slice(0,6) + "..." + userAddress.slice(-4);
+    document.getElementById("connect-btn").classList.add("connected");
+    document.getElementById("not-connected").style.display = "none";
+    document.getElementById("connected-view").style.display = "block";
+    document.getElementById("wallet-address").textContent = "Connected: " + userAddress;
+
+    await loadMyBids();
+  } catch(e) {
+    alert("Connection failed: " + e.message);
+  }
+}
+
+async function switchToArc() {
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: "0x" + ARC_CHAIN_ID.toString(16) }]
+    });
+  } catch(e) {
+    if (e.code === 4902) {
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [{
+          chainId: "0x" + ARC_CHAIN_ID.toString(16),
+          chainName: "Arc Testnet",
+          nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 6 },
+          rpcUrls: [ARC_RPC],
+          blockExplorerUrls: ["https://testnet.arcscan.app"]
+        }]
+      });
+    }
+  }
+}
+
+async function loadTopBid() {
+  const addr = document.getElementById("creator-addr").value.trim();
+  if (!ethers.isAddress(addr) || !contract) return;
+  try {
+    const [minBid, exists] = await contract.creators(addr);
+    if (!exists) return;
+    const topBid = await contract.getTopBid(addr);
+    const topAmt = (Number(topBid) / 10**USDC_DECIMALS).toFixed(2);
+    const minAmt = (Number(minBid) / 10**USDC_DECIMALS).toFixed(2);
+    document.getElementById("top-bid-val").textContent =
+      topBid > 0 ? `$${topAmt} USDC` : `No bids yet (min $${minAmt})`;
+    document.getElementById("top-bid-section").style.display = "block";
+    if (!document.getElementById("bid-amount").value) {
+      document.getElementById("bid-amount").value =
+        topBid > 0 ? Math.ceil(Number(topAmt)) + 1 : Math.ceil(Number(minAmt));
+      updatePreview();
+    }
+  } catch(e) { console.error(e); }
+}
+
+function updatePreview() {
+  const amt = parseFloat(document.getElementById("bid-amount").value) || 0;
+  document.getElementById("bid-preview").textContent = amt.toFixed(2);
+}
+
+async function placeBid() {
+  const creatorAddr = document.getElementById("creator-addr").value.trim();
+  const amtUSD = parseFloat(document.getElementById("bid-amount").value);
+  const message = document.getElementById("bid-message").value.trim();
+  const isPrivate = document.getElementById("private-toggle").checked;
+
+  if (!ethers.isAddress(creatorAddr)) {
+    showStatus("Enter a valid creator address.", "err"); return;
+  }
+  if (!amtUSD || amtUSD <= 0) {
+    showStatus("Enter a bid amount.", "err"); return;
+  }
+  if (!message) {
+    showStatus("Write a message to the creator.", "err"); return;
+  }
+
+  const amtWei = BigInt(Math.round(amtUSD * 10**USDC_DECIMALS));
+
+  // Check balance
+  const balance = await usdcContract.balanceOf(userAddress);
+  if (balance < amtWei) {
+    showStatus(`Insufficient USDC balance. You have $${(Number(balance)/10**USDC_DECIMALS).toFixed(2)} USDC.`, "err");
+    return;
+  }
+
+  // Step 1: Approve
+  showStatus("Step 1/2: Approving USDC spend... (confirm in MetaMask)", "loading");
+  try {
+    const allowance = await usdcContract.allowance(userAddress, CONTRACT_ADDRESS);
+    if (allowance < amtWei) {
+      const approveTx = await usdcContract.approve(CONTRACT_ADDRESS, amtWei);
+      showStatus("Approval submitted — waiting for confirmation...", "loading");
+      await approveTx.wait();
+    }
+
+    // Step 2: Place bid
+    showStatus("Step 2/2: Placing bid... (confirm in MetaMask)", "loading");
+    const tx = await contract.placeBid(creatorAddr, amtWei, message, isPrivate);
+    showStatus("Bid submitted — waiting for confirmation...", "loading");
+    await tx.wait();
+
+    showStatus(`✓ Bid placed! $${amtUSD.toFixed(2)} USDC locked in escrow. The creator will be notified.`, "ok");
+
+    // Clear form
+    document.getElementById("bid-amount").value = "";
+    document.getElementById("bid-message").value = "";
+    document.getElementById("bid-preview").textContent = "0.00";
+
+    await loadMyBids();
+  } catch(e) {
+    showStatus("Error: " + (e.reason || e.message), "err");
+  }
+}
+
+async function loadMyBids() {
+  if (!contract || !userAddress) return;
+  try {
+    const bidIds = await contract.getBidderBids(userAddress);
+    if (bidIds.length === 0) return;
+
+    const myBidList = document.getElementById("my-bid-list");
+    myBidList.innerHTML = "";
+    const now = Math.floor(Date.now() / 1000);
+    const TIMEOUT = 14 * 24 * 60 * 60;
+
+    for (const id of bidIds) {
+      const [bidder, creator, amount, message, timestamp, status, isPrivate] =
+        await contract.getBid(id);
+      if (Number(status) !== 0) continue;
+
+      const usdcAmt = (Number(amount) / 10**USDC_DECIMALS).toFixed(2);
+      const expiry  = Number(timestamp) + TIMEOUT;
+      const daysLeft = Math.max(0, Math.floor((expiry - now) / 86400));
+      const pct = Math.max(2, Math.round((expiry - now) / TIMEOUT * 100));
+      const isExpiring = daysLeft <= 2;
+      const fillColor = isExpiring ? "#fbbf24" : "#4ade80";
+
+      const card = document.createElement("div");
+      card.className = "my-bid-card";
+      card.innerHTML = `
+        <div class="my-bid-row">
+          <div>
+            <div class="my-bid-creator">${creator.slice(0,6)}...${creator.slice(-4)}</div>
+            <div class="my-bid-meta">$${usdcAmt} USDC locked · Bid #${Number(id)}</div>
+          </div>
+          <span class="bid-tag ${isExpiring ? 'tag-expiring' : 'tag-active'}">
+            ${isExpiring ? 'expiring soon' : 'active'}
+          </span>
+        </div>
+        <div class="expiry-bar">
+          <div class="expiry-label">Expires in ${daysLeft} days</div>
+          <div class="expiry-track">
+            <div class="expiry-fill" style="width:${pct}%;background:${fillColor};"></div>
+          </div>
+        </div>
+      `;
+      myBidList.appendChild(card);
+    }
+
+    document.getElementById("my-bids-section").style.display = "block";
+  } catch(e) { console.error(e); }
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById("bid-status");
+  el.textContent = msg;
+  el.className = "status-msg show " + type;
+}
+
+window.addEventListener("load", async () => {
+  if (window.ethereum) {
+    const accounts = await window.ethereum.request({ method: "eth_accounts" });
+    if (accounts.length > 0) connectWallet();
+  }
+});
+</script>
+</body>
+</html>

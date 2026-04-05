@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creator Dashboard — PitchSlotArc</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,700;0,900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --green: #4ade80;
+    --ink: #0d0d0d;
+    --surface: #111;
+    --surface2: #161616;
+    --border: #222;
+    --muted: #555;
+    --mono: 'DM Mono', monospace;
+    --serif: 'Fraunces', serif;
+  }
+  body { font-family: var(--mono); background: var(--ink); color: #fff; min-height: 100vh; }
+
+  nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 32px; border-bottom: 1px solid var(--border);
+  }
+  .logo { font-family: var(--serif); font-size: 18px; font-weight: 900; }
+  .logo span { color: var(--green); font-style: italic; }
+  .logo a { color: inherit; text-decoration: none; }
+
+  #connect-btn {
+    font-family: var(--mono); font-size: 11px; padding: 8px 16px;
+    background: transparent; border: 1px solid var(--border);
+    color: #fff; cursor: pointer; border-radius: 4px; letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+  #connect-btn:hover { border-color: var(--green); color: var(--green); }
+  #connect-btn.connected { border-color: var(--green); color: var(--green); }
+
+  .container { max-width: 860px; margin: 0 auto; padding: 40px 32px; }
+
+  .page-title {
+    font-family: var(--serif); font-size: 36px; font-weight: 900;
+    letter-spacing: -0.03em; margin-bottom: 8px;
+  }
+  .page-title em { color: var(--green); font-style: italic; }
+  .page-sub { font-size: 12px; color: var(--muted); margin-bottom: 40px; }
+
+  .stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 2px; background: var(--border); margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--surface); padding: 24px 20px;
+  }
+  .stat-label { font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .stat-val { font-family: var(--serif); font-size: 28px; font-weight: 900; color: var(--green); }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 4px; padding: 24px; margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 16px;
+  }
+
+  .form-row { margin-bottom: 14px; }
+  .form-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; display: block; }
+  input[type="number"], input[type="text"] {
+    width: 100%; background: var(--ink); border: 1px solid var(--border);
+    color: #fff; font-family: var(--mono); font-size: 13px;
+    padding: 10px 14px; border-radius: 4px; outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus { border-color: var(--green); }
+
+  .btn {
+    font-family: var(--mono); font-size: 12px; padding: 10px 20px;
+    border-radius: 4px; border: none; cursor: pointer;
+    letter-spacing: 0.03em; transition: all 0.15s;
+  }
+  .btn-green { background: var(--green); color: #000; font-weight: 500; }
+  .btn-green:hover { background: #22c55e; }
+  .btn-outline { background: transparent; color: #fff; border: 1px solid var(--border); }
+  .btn-outline:hover { border-color: #555; }
+  .btn-red { background: transparent; color: #f87171; border: 1px solid #f87171; }
+  .btn-red:hover { background: #f87171; color: #000; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .agent-bar {
+    background: #0a1f14; border: 1px solid #1a4a2a; border-radius: 4px;
+    padding: 12px 16px; display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: 24px;
+  }
+  .agent-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+    display: inline-block; margin-right: 8px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .agent-text { font-size: 11px; color: var(--green); }
+
+  .bid-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 20px; margin-bottom: 10px;
+    transition: border-color 0.15s;
+  }
+  .bid-card:hover { border-color: #333; }
+  .bid-card.top { border-left: 3px solid var(--green); }
+
+  .bid-header {
+    display: flex; justify-content: space-between;
+    align-items: flex-start; margin-bottom: 10px;
+  }
+  .bid-amount {
+    font-family: var(--serif); font-size: 24px; font-weight: 900;
+    color: var(--green);
+  }
+  .bid-tag {
+    font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 20px;
+  }
+  .tag-active { background: #0a1f14; color: var(--green); border: 1px solid #1a4a2a; }
+  .tag-private { background: #1a1030; color: #a78bfa; border: 1px solid #3730a3; }
+  .tag-accepted { background: #0a1f14; color: var(--green); }
+  .tag-rejected { background: #1f0a0a; color: #f87171; }
+
+  .bid-meta { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .bid-message {
+    font-size: 12px; color: #aaa; line-height: 1.6;
+    background: var(--ink); padding: 10px 14px; border-radius: 4px;
+    margin-bottom: 12px; font-style: italic;
+  }
+  .bid-actions { display: flex; gap: 8px; }
+
+  .expiry-bar { margin-top: 10px; }
+  .expiry-label { font-size: 9px; color: var(--muted); margin-bottom: 4px; letter-spacing: 0.05em; }
+  .expiry-track { height: 2px; background: #222; border-radius: 1px; overflow: hidden; }
+  .expiry-fill { height: 100%; border-radius: 1px; background: var(--green); transition: width 0.3s; }
+
+  .status-msg {
+    font-size: 11px; padding: 10px 14px; border-radius: 4px;
+    margin-top: 12px; display: none;
+  }
+  .status-msg.show { display: block; }
+  .status-msg.ok { background: #0a1f14; color: var(--green); border: 1px solid #1a4a2a; }
+  .status-msg.err { background: #1f0a0a; color: #f87171; border: 1px solid #7f1d1d; }
+  .status-msg.loading { background: #1a1a0a; color: #fbbf24; border: 1px solid #78350f; }
+
+  #no-bids { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 12px; display: none; }
+  #not-connected { text-align: center; padding: 80px 20px; }
+  #not-connected h2 { font-family: var(--serif); font-size: 28px; margin-bottom: 12px; }
+  #not-connected p { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+
+  @media (max-width: 600px) {
+    .stats-row { grid-template-columns: 1fr; }
+    .container { padding: 20px 16px; }
+    nav { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo"><a href="index.html">Pitch<span>Slot</span>Arc</a></div>
+  <button id="connect-btn" onclick="connectWallet()">Connect Wallet</button>
+</nav>
+
+<div class="container">
+
+  <!-- NOT CONNECTED STATE -->
+  <div id="not-connected">
+    <h2>Creator <em style="color:var(--green);font-style:italic;">Dashboard</em></h2>
+    <p>Connect your MetaMask wallet to register as a creator and manage your bids.</p>
+    <button class="btn btn-green" onclick="connectWallet()">Connect MetaMask →</button>
+  </div>
+
+  <!-- CONNECTED STATE -->
+  <div id="connected-view" style="display:none;">
+    <div class="page-title">Creator <em>Dashboard</em></div>
+    <div class="page-sub" id="wallet-address">Connected: —</div>
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total earned</div>
+        <div class="stat-val" id="stat-earned">$0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active bids</div>
+        <div class="stat-val" id="stat-active">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Min threshold</div>
+        <div class="stat-val" id="stat-min">—</div>
+      </div>
+    </div>
+
+    <!-- REGISTER / UPDATE -->
+    <div class="card" id="register-card">
+      <div class="card-title">Register as Creator</div>
+      <div class="form-row">
+        <label class="form-label">Minimum bid amount (USDC)</label>
+        <input type="number" id="min-bid-input" placeholder="e.g. 5" min="1" step="1">
+      </div>
+      <button class="btn btn-green" onclick="registerCreator()" id="register-btn">
+        Register & Set Minimum →
+      </button>
+      <div class="status-msg" id="register-status"></div>
+    </div>
+
+    <!-- AGENT BAR -->
+    <div class="agent-bar" id="agent-bar" style="display:none;">
+      <div>
+        <span class="agent-dot"></span>
+        <span class="agent-text" id="agent-status-text">Agent active — filtering bids below threshold</span>
+      </div>
+      <span style="font-size:10px;color:#555;">Ollama · llama3.2</span>
+    </div>
+
+    <!-- BID INBOX -->
+    <div class="card" id="inbox-card" style="display:none;">
+      <div class="card-title">Inbox — ranked by bid amount</div>
+      <div id="bid-list"></div>
+      <div id="no-bids">No active bids yet. Share your creator address to start receiving bids.</div>
+    </div>
+
+    <!-- ACTION STATUS -->
+    <div class="status-msg" id="action-status"></div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────
+const CONTRACT_ADDRESS = "0xd97Df466F8de1BE0567aa5403c8d5dB06cee25B7";
+const USDC_ADDRESS     = "0x3600000000000000000000000000000000000000";
+const ARC_CHAIN_ID     = 5042002;
+const ARC_RPC          = "https://rpc.testnet.arc.network";
+const USDC_DECIMALS    = 6;
+
+const ABI = [
+  "function registerCreator(uint256 _minBid) external",
+  "function updateMinBid(uint256 _newMinBid) external",
+  "function acceptBid(uint256 _bidId) external",
+  "function rejectBid(uint256 _bidId) external",
+  "function claimRefund(uint256 _bidId) external",
+  "function getCreatorBids(address _creator) view returns (uint256[])",
+  "function getBid(uint256 _bidId) view returns (address,address,uint256,string,uint256,uint8,bool)",
+  "function creators(address) view returns (uint256,bool,uint256)",
+  "function getTopBid(address) view returns (uint256)"
+];
+
+const USDC_ABI = [
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function balanceOf(address) view returns (uint256)"
+];
+
+let provider, signer, contract, usdcContract, userAddress;
+
+// ── CONNECT WALLET ───────────────────────────────────────
+async function connectWallet() {
+  if (!window.ethereum) {
+    alert("MetaMask not found. Please install MetaMask.");
+    return;
+  }
+  try {
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    userAddress = await signer.getAddress();
+
+    // Switch to Arc Testnet
+    await switchToArc();
+
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+    usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
+
+    document.getElementById("connect-btn").textContent =
+      userAddress.slice(0,6) + "..." + userAddress.slice(-4);
+    document.getElementById("connect-btn").classList.add("connected");
+    document.getElementById("not-connected").style.display = "none";
+    document.getElementById("connected-view").style.display = "block";
+    document.getElementById("wallet-address").textContent =
+      "Connected: " + userAddress;
+
+    await loadCreatorData();
+  } catch (e) {
+    console.error(e);
+    alert("Connection failed: " + e.message);
+  }
+}
+
+// ── SWITCH TO ARC ────────────────────────────────────────
+async function switchToArc() {
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: "0x" + ARC_CHAIN_ID.toString(16) }]
+    });
+  } catch (e) {
+    if (e.code === 4902) {
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [{
+          chainId: "0x" + ARC_CHAIN_ID.toString(16),
+          chainName: "Arc Testnet",
+          nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 6 },
+          rpcUrls: [ARC_RPC],
+          blockExplorerUrls: ["https://testnet.arcscan.app"]
+        }]
+      });
+    }
+  }
+}
+
+// ── LOAD CREATOR DATA ────────────────────────────────────
+async function loadCreatorData() {
+  try {
+    const [minBid, exists, totalEarned] = await contract.creators(userAddress);
+
+    if (exists) {
+      document.getElementById("register-card").querySelector(".card-title").textContent = "Update Minimum Bid";
+      document.getElementById("register-btn").textContent = "Update Minimum →";
+      document.getElementById("min-bid-input").value = Number(minBid) / 10**USDC_DECIMALS;
+      document.getElementById("stat-min").textContent = "$" + (Number(minBid) / 10**USDC_DECIMALS).toFixed(2);
+      document.getElementById("stat-earned").textContent = "$" + (Number(totalEarned) / 10**USDC_DECIMALS).toFixed(2);
+      document.getElementById("agent-bar").style.display = "flex";
+      document.getElementById("inbox-card").style.display = "block";
+      await loadBids(minBid);
+    }
+  } catch (e) {
+    console.error("Load error:", e);
+  }
+}
+
+// ── LOAD BIDS ────────────────────────────────────────────
+async function loadBids(minBid) {
+  const bidIds = await contract.getCreatorBids(userAddress);
+  const bidList = document.getElementById("bid-list");
+  const noBids  = document.getElementById("no-bids");
+  bidList.innerHTML = "";
+
+  const bids = [];
+  for (const id of bidIds) {
+    const [bidder, creator, amount, message, timestamp, status, isPrivate] =
+      await contract.getBid(id);
+    bids.push({ id: Number(id), bidder, amount, message, timestamp: Number(timestamp), status: Number(status), isPrivate });
+  }
+
+  // Filter active, sort by amount desc
+  const active = bids
+    .filter(b => b.status === 0)
+    .sort((a, b) => Number(b.amount) - Number(a.amount));
+
+  document.getElementById("stat-active").textContent = active.length;
+
+  if (active.length === 0) {
+    noBids.style.display = "block";
+    return;
+  }
+  noBids.style.display = "none";
+
+  const now = Math.floor(Date.now() / 1000);
+  const TIMEOUT = 14 * 24 * 60 * 60;
+
+  active.forEach((bid, i) => {
+    const usdcAmt  = (Number(bid.amount) / 10**USDC_DECIMALS).toFixed(2);
+    const expiry   = bid.timestamp + TIMEOUT;
+    const daysLeft = Math.max(0, Math.floor((expiry - now) / 86400));
+    const pct      = Math.max(2, Math.round((expiry - now) / TIMEOUT * 100));
+    const identity = bid.isPrivate ? "Anonymous bidder" :
+      bid.bidder.slice(0,6) + "..." + bid.bidder.slice(-4);
+
+    const card = document.createElement("div");
+    card.className = "bid-card" + (i === 0 ? " top" : "");
+    card.id = "bid-card-" + bid.id;
+    card.innerHTML = `
+      <div class="bid-header">
+        <div>
+          <div class="bid-amount">$${usdcAmt} USDC</div>
+          <div class="bid-meta">${identity} · ${daysLeft}d remaining · Bid #${bid.id}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          ${i === 0 ? '<span class="bid-tag tag-active">top bid</span>' : ''}
+          ${bid.isPrivate ? '<span class="bid-tag tag-private">private</span>' : ''}
+        </div>
+      </div>
+      <div class="bid-message">"${escapeHtml(bid.message)}"</div>
+      <div class="bid-actions">
+        <button class="btn btn-green" onclick="acceptBid(${bid.id}, '${bid.amount}')">Accept →</button>
+        <button class="btn btn-red" onclick="rejectBid(${bid.id})">Reject</button>
+      </div>
+      <div class="expiry-bar">
+        <div class="expiry-label">Expires in ${daysLeft} days</div>
+        <div class="expiry-track"><div class="expiry-fill" style="width:${pct}%"></div></div>
+      </div>
+    `;
+    bidList.appendChild(card);
+  });
+}
+
+// ── REGISTER CREATOR ─────────────────────────────────────
+async function registerCreator() {
+  const minBidUSD = parseFloat(document.getElementById("min-bid-input").value);
+  if (!minBidUSD || minBidUSD <= 0) {
+    showStatus("register-status", "Enter a valid minimum bid amount.", "err");
+    return;
+  }
+
+  const minBidWei = BigInt(Math.round(minBidUSD * 10**USDC_DECIMALS));
+  showStatus("register-status", "Submitting transaction...", "loading");
+
+  try {
+    const [, exists] = await contract.creators(userAddress);
+    let tx;
+    if (exists) {
+      tx = await contract.updateMinBid(minBidWei);
+    } else {
+      tx = await contract.registerCreator(minBidWei);
+    }
+    showStatus("register-status", "Transaction sent — waiting for confirmation...", "loading");
+    await tx.wait();
+    showStatus("register-status", "✓ Registered! Loading your dashboard...", "ok");
+    setTimeout(() => loadCreatorData(), 2000);
+  } catch (e) {
+    showStatus("register-status", "Error: " + (e.reason || e.message), "err");
+  }
+}
+
+// ── ACCEPT BID ────────────────────────────────────────────
+async function acceptBid(bidId, amount) {
+  showStatus("action-status", "Accepting bid #" + bidId + "...", "loading");
+  try {
+    const tx = await contract.acceptBid(bidId);
+    await tx.wait();
+    const earned = (Number(amount) / 10**USDC_DECIMALS * 0.98).toFixed(2);
+    showStatus("action-status", `✓ Bid #${bidId} accepted! $${earned} USDC released to your wallet.`, "ok");
+    const card = document.getElementById("bid-card-" + bidId);
+    if (card) {
+      card.style.opacity = "0.4";
+      card.style.pointerEvents = "none";
+      card.querySelector(".bid-actions").innerHTML =
+        `<span style="font-size:11px;color:var(--green);">✓ Accepted — $${earned} USDC received</span>`;
+    }
+    await loadCreatorData();
+  } catch (e) {
+    showStatus("action-status", "Error: " + (e.reason || e.message), "err");
+  }
+}
+
+// ── REJECT BID ────────────────────────────────────────────
+async function rejectBid(bidId) {
+  showStatus("action-status", "Rejecting bid #" + bidId + "...", "loading");
+  try {
+    const tx = await contract.rejectBid(bidId);
+    await tx.wait();
+    showStatus("action-status", `✓ Bid #${bidId} rejected. USDC refunded to bidder.`, "ok");
+    const card = document.getElementById("bid-card-" + bidId);
+    if (card) {
+      card.style.opacity = "0.3";
+      card.style.pointerEvents = "none";
+      card.querySelector(".bid-actions").innerHTML =
+        `<span style="font-size:11px;color:#555;">Rejected — bidder refunded</span>`;
+    }
+    await loadCreatorData();
+  } catch (e) {
+    showStatus("action-status", "Error: " + (e.reason || e.message), "err");
+  }
+}
+
+// ── HELPERS ───────────────────────────────────────────────
+function showStatus(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = "status-msg show " + type;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// Auto-connect if already connected
+window.addEventListener("load", async () => {
+  if (window.ethereum) {
+    const accounts = await window.ethereum.request({ method: "eth_accounts" });
+    if (accounts.length > 0) connectWallet();
+  }
+});
+</script>
+</body>
+</html>
