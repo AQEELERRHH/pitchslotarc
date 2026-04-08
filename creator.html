@@ -233,7 +233,7 @@
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────
-const CONTRACT_ADDRESS = "0xd97Df466F8de1BE0567aa5403c8d5dB06cee25B7";
+const CONTRACT_ADDRESS = "0x8cE043782dA362F3E9Caf5fd995061765A993138";
 const USDC_ADDRESS     = "0x3600000000000000000000000000000000000000";
 const ARC_CHAIN_ID     = 5042002;
 const ARC_RPC          = "https://rpc.testnet.arc.network";
@@ -242,7 +242,8 @@ const USDC_DECIMALS    = 6;
 const ABI = [
   "function registerCreator(uint256 _minBid) external",
   "function updateMinBid(uint256 _newMinBid) external",
-  "function acceptBid(uint256 _bidId) external",
+  "function acceptBid(uint256 _bidId, string calldata _reply) external",
+  "function getBidReply(uint256 _bidId) view returns (string)",
   "function rejectBid(uint256 _bidId) external",
   "function claimRefund(uint256 _bidId) external",
   "function getCreatorBids(address _creator) view returns (uint256[])",
