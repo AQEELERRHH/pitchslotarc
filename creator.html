@@ -432,21 +432,26 @@ async function registerCreator() {
 
 // ── ACCEPT BID ────────────────────────────────────────────
 async function acceptBid(bidId, amount) {
+  const reply = prompt("Write your reply to this bidder (min 10 characters).\nThis is stored on-chain as proof you responded:");
+  if (!reply || reply.trim().length < 10) {
+    showStatus("action-status", "Reply must be at least 10 characters.", "err");
+    return;
+  }
   showStatus("action-status", "Accepting bid #" + bidId + "...", "loading");
   try {
-    const tx = await contract.acceptBid(bidId);
+    const tx = await contract.acceptBid(bidId, reply.trim());
     await tx.wait();
     const earned = (Number(amount) / 10**USDC_DECIMALS * 0.98).toFixed(2);
-    showStatus("action-status", `✓ Bid #${bidId} accepted! $${earned} USDC released to your wallet.`, "ok");
+    showStatus("action-status", `✓ Bid #${bidId} accepted! Reply stored on-chain. $${earned} USDC released.`, "ok");
     const card = document.getElementById("bid-card-" + bidId);
     if (card) {
       card.style.opacity = "0.4";
       card.style.pointerEvents = "none";
       card.querySelector(".bid-actions").innerHTML =
-        `<span style="font-size:11px;color:var(--green);">✓ Accepted — $${earned} USDC received</span>`;
+        `<span style="font-size:11px;color:var(--green);">✓ Replied & paid — $${earned} USDC received</span>`;
     }
     await loadCreatorData();
-  } catch (e) {
+  } catch(e) {
     showStatus("action-status", "Error: " + (e.reason || e.message), "err");
   }
 }
